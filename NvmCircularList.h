@@ -37,13 +37,13 @@ public:
     }
 };
 
-// 假设Node和PMmanager的定义已经提供
-class CircularLinkedList {
+// NVM Circular Linked List
+class NvmCircularLinkedList {
 public:
     NvmNode* head;
     PMmanager* pm_;
 
-    CircularLinkedList(PMmanager* pm): head(nullptr), pm_(pm) {}
+    NvmCircularLinkedList(PMmanager* pm): head(nullptr), pm_(pm) {}
 
     NvmNode* createNode(std::string key, std::string data) {
         size_t keySize = key.size() + 1; // 加1为了null终结符
@@ -94,7 +94,7 @@ public:
         pm_->Free(node);
     }
 
-    ~CircularLinkedList() {
+    ~NvmCircularLinkedList() {
         while (head != nullptr && head != head->next) {
             deleteNode(head);
         }

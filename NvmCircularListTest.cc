@@ -1,9 +1,9 @@
-#include "circular_list.cc"
+#include "NvmCircularList.h"
 #include "pm_manager.h"
 #include <gtest/gtest.h>
 #include <string>
 
-class CircularLinkedListTest : public ::testing::Test {
+class CircularListNvmTest : public ::testing::Test {
 protected:
 
     const size_t capacity = 4 * 100; //400 byte
@@ -19,8 +19,9 @@ protected:
     }
 };
 
-TEST_F(CircularLinkedListTest, InsertAndCheckIntegrity) {
-    CircularLinkedList list(pm);
+
+TEST_F(CircularListNvmTest, InsertAndCheckIntegrity) {
+    NvmCircularLinkedList list(pm);
 
     list.insertNode("key1", "data1");
     NvmNode* head = list.head;
@@ -41,8 +42,8 @@ TEST_F(CircularLinkedListTest, InsertAndCheckIntegrity) {
     EXPECT_EQ(head->prev, head->next);
 }
 
-TEST_F(CircularLinkedListTest, DeleteNodeUpdatesLinksCorrectly) {
-    CircularLinkedList list(pm);
+TEST_F(CircularListNvmTest, DeleteNodeUpdatesLinksCorrectly) {
+    NvmCircularLinkedList list(pm);
 
     list.insertNode("key1", "data1");
     list.insertNode("key2", "data2");
@@ -57,8 +58,8 @@ TEST_F(CircularLinkedListTest, DeleteNodeUpdatesLinksCorrectly) {
     EXPECT_EQ(list.head->prev, list.head->next); // 确保删除后头节点的prev正确指向新的尾节点
 }
 
-TEST_F(CircularLinkedListTest, DeleteLastNode) {
-    CircularLinkedList list(pm);
+TEST_F(CircularListNvmTest, DeleteLastNode) {
+    NvmCircularLinkedList list(pm);
 
     list.insertNode("key1", "data1");
     NvmNode* nodeToDelete = list.head;
@@ -67,8 +68,8 @@ TEST_F(CircularLinkedListTest, DeleteLastNode) {
     EXPECT_EQ(list.head, nullptr); // 确保删除最后一个节点后head正确更新为nullptr
 }
 
-TEST_F(CircularLinkedListTest, MultipleInsertionsAndDeletions) {
-    CircularLinkedList list(pm);
+TEST_F(CircularListNvmTest, MultipleInsertionsAndDeletions) {
+    NvmCircularLinkedList list(pm);
 
     // 插入多个节点
     for (int i = 1; i <= 5; ++i) {
@@ -95,6 +96,15 @@ TEST_F(CircularLinkedListTest, MultipleInsertionsAndDeletions) {
     }
 
     EXPECT_EQ(list.head, nullptr); // 确保最终链表为空
+}
+TEST_F(CircularListNvmTest, DeleteFromSingleItemList) {
+    NvmCircularLinkedList list(pm);
+
+    list.insertNode("singleKey", "singleData");
+    NvmNode* nodeToDelete = list.head;
+    list.deleteNode(nodeToDelete);
+
+    EXPECT_EQ(list.head, nullptr);
 }
 
 int main(int argc, char **argv) {
