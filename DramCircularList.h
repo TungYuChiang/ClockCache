@@ -51,12 +51,14 @@ public:
 class DramCircularLinkedList {
 public:
     DramNode* head;
+    size_t currentSize; // 当前链表占用的总大小
 
-    DramCircularLinkedList(): head(nullptr) {}
+    DramCircularLinkedList(): head(nullptr), currentSize(0) {}
 
+    //在DramNode()裡面會使用char來做搬移，實際大小會是key.size() + 1
     void insertNode(const std::string& key, const std::string& data) {
-        size_t size = key.size() + data.size() + sizeof(DramNode);
-        DramNode* newNode = new DramNode(key, data, size);
+        size_t nodeSize = (key.size() + 1) + (data.size() + 1 )+ sizeof(DramNode);
+        DramNode* newNode = new DramNode(key, data, nodeSize);
         if (head == nullptr) {
             head = newNode;
             newNode->next = newNode;
@@ -67,9 +69,12 @@ public:
             head->prev->next = newNode;
             head->prev = newNode;
         }
+        currentSize += nodeSize; // 更新链表占用的总大小
     }
 
     void deleteNode(DramNode* node) {
+        if (node == nullptr) return;
+
         if (node == node->next) {
             head = nullptr;
         } else {
@@ -77,6 +82,9 @@ public:
             node->next->prev = node->prev;
             if (head == node) head = node->next;
         }
+        currentSize -= node->size; // 更新链表占用的总大小
+        delete[] node->key;
+        delete[] node->data;
         delete node;
     }
 

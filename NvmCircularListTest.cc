@@ -123,6 +123,53 @@ TEST_F(CircularListNvmTest, NodeStatusTransition) {
     node->setStatus(NvmNode::Migration);
     EXPECT_EQ(node->getStatus(), NvmNode::Migration);
 }
+// 测试插入节点后currentSize的更新
+TEST_F(CircularListNvmTest, CurrentSizeAfterInsertion) {
+    NvmCircularLinkedList list(pm);
+
+    list.insertNode("key1", "data1");
+    size_t expectedSizeAfterFirstInsert = sizeof(NvmNode) + strlen("key1") + 1 + strlen("data1") + 1;
+    EXPECT_EQ(list.currentSize, expectedSizeAfterFirstInsert);
+
+    list.insertNode("key2", "data2");
+    size_t expectedSizeAfterSecondInsert = expectedSizeAfterFirstInsert + sizeof(NvmNode) + strlen("key2") + 1 + strlen("data2") + 1;
+    EXPECT_EQ(list.currentSize, expectedSizeAfterSecondInsert);
+}
+
+// 测试删除节点后currentSize的更新
+TEST_F(CircularListNvmTest, CurrentSizeAfterDeletion) {
+    NvmCircularLinkedList list(pm);
+
+    list.insertNode("key1", "data1");
+    list.insertNode("key2", "data2");
+    size_t sizeBeforeDeletion = list.currentSize;
+
+    NvmNode* nodeToDelete = list.head->next; // 删除第二个插入的节点
+    list.deleteNode(nodeToDelete);
+    size_t expectedSizeAfterDeletion = sizeBeforeDeletion - (sizeof(NvmNode) + strlen("key2") + 1 + strlen("data2") + 1);
+    EXPECT_EQ(list.currentSize, expectedSizeAfterDeletion);
+}
+
+// 测试清空链表后currentSize是否为0
+TEST_F(CircularListNvmTest, CurrentSizeAfterClearingList) {
+    NvmCircularLinkedList list(pm);
+
+    list.insertNode("key1", "data1");
+    list.insertNode("key2", "data2");
+    list.insertNode("key3", "data3");
+
+    // 逐个删除所有节点
+    while (list.head != nullptr && list.head->next != list.head) {
+        list.deleteNode(list.head);
+    }
+    // 最后删除剩余的最后一个节点
+    list.deleteNode(list.head);
+
+    // 验证链表已清空且currentSize为0
+    EXPECT_EQ(list.head, nullptr);
+    EXPECT_EQ(list.currentSize, 0);
+}
+
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);

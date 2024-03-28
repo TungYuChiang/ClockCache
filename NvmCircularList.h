@@ -59,8 +59,9 @@ class NvmCircularLinkedList {
 public:
     NvmNode* head;
     PMmanager* pm_;
+    size_t currentSize; // 新增：当前链表占用的总大小
 
-    NvmCircularLinkedList(PMmanager* pm): head(nullptr), pm_(pm) {}
+    NvmCircularLinkedList(PMmanager* pm): head(nullptr), pm_(pm), currentSize(0) {}
 
     NvmNode* createNode(std::string key, std::string data) {
         size_t keySize = key.size() + 1; // 加1为了null终结符
@@ -98,6 +99,7 @@ public:
             head->prev->next = newNode;
             head->prev = newNode;
         }
+        currentSize += newNode->size; // 更新链表占用的总大小
     }
 
     void deleteNode(NvmNode* node) {
@@ -108,6 +110,7 @@ public:
             node->next->prev = node->prev;
             if (head == node) head = node->next;
         }
+        currentSize -= node->size; // 更新链表占用的总大小
         pm_->Free(node);
     }
 
@@ -119,8 +122,10 @@ public:
             pm_->Free(head);
             head = nullptr;
         }
+        currentSize = 0; // 确保链表销毁后，currentSize重置为0
     }
 };
+
 
 
 

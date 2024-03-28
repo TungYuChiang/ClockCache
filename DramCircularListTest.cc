@@ -116,6 +116,47 @@ TEST_F(CircularListDramTest, NodeStatusTransition) {
     EXPECT_EQ(node->getStatus(), DramNode::Twice_read);
 }
 
+// 测试插入节点后currentSize的更新
+TEST_F(CircularListDramTest, CurrentSizeAfterInsertion) {
+    list->insertNode("key1", "data1");
+    size_t expectedSize = sizeof(DramNode) + strlen("key1") + 1 + strlen("data1") + 1;
+    EXPECT_EQ(list->currentSize, expectedSize);
+
+    list->insertNode("key2", "data2");
+    expectedSize += sizeof(DramNode) + strlen("key2") + 1 + strlen("data2") + 1;
+    EXPECT_EQ(list->currentSize, expectedSize);
+}
+
+// 测试删除节点后currentSize的更新
+TEST_F(CircularListDramTest, CurrentSizeAfterDeletion) {
+    list->insertNode("key1", "data1");
+    list->insertNode("key2", "data2");
+    size_t initialSize = list->currentSize;
+
+    list->deleteNode(list->head->next); // 删除"key2", "data2"
+    size_t expectedSizeAfterDeletion = initialSize - (sizeof(DramNode) + strlen("key2") + 1 + strlen("data2") + 1);
+    EXPECT_EQ(list->currentSize, expectedSizeAfterDeletion);
+}
+
+// 测试清空链表后currentSize是否为0
+TEST_F(CircularListDramTest, CurrentSizeAfterClearingList) {
+    list->insertNode("key1", "data1");
+    list->insertNode("key2", "data2");
+    list->insertNode("key3", "data3");
+
+    // 逐个删除所有节点
+    while (list->head != nullptr && list->head->next != list->head) {
+        list->deleteNode(list->head);
+    }
+    // 最后删除剩余的最后一个节点
+    list->deleteNode(list->head);
+
+    // 验证链表已清空且currentSize为0
+    EXPECT_EQ(list->head, nullptr);
+    EXPECT_EQ(list->currentSize, 0);
+}
+
+
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
