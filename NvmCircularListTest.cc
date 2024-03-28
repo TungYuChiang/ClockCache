@@ -107,6 +107,23 @@ TEST_F(CircularListNvmTest, DeleteFromSingleItemList) {
     EXPECT_EQ(list.head, nullptr);
 }
 
+//測試enum
+TEST_F(CircularListNvmTest, NodeStatusTransition) {
+    NvmCircularLinkedList list(pm);
+    list.insertNode("key", "data");
+    NvmNode* node = list.head;
+
+    // 假设 setStatus 是一个公共方法，用于改变节点的状态
+    node->setStatus(NvmNode::Be_Written);
+    EXPECT_EQ(node->getStatus(), NvmNode::Be_Written);
+
+    node->setStatus(NvmNode::Pre_Migration);
+    EXPECT_EQ(node->getStatus(), NvmNode::Pre_Migration);
+
+    node->setStatus(NvmNode::Migration);
+    EXPECT_EQ(node->getStatus(), NvmNode::Migration);
+}
+
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

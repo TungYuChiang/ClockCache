@@ -6,6 +6,8 @@
 #include <cstring> // 用于strcpy
 #include "pm_manager.h"
 
+#include "pm_manager.h"
+
 class NvmNode {
 public:
     char* key;
@@ -13,29 +15,44 @@ public:
     size_t size;
     NvmNode* prev;
     NvmNode* next;
-    struct {
+
+    struct Attributes {
         unsigned int reference : 1; 
-        unsigned int status : 2;    
+        unsigned int status : 2;    // 保持为 unsigned int 以使用2位存储
         unsigned int twiceRead : 1; 
     } attributes;
 
     enum NvmNodeStatus {
-        Inital = 0,
+        Initial = 0,
         Be_Written = 1,
         Pre_Migration = 2,
         Migration = 3
     };
 
-
     NvmNode(char* key, char* data, size_t size): prev(nullptr), next(nullptr), size(size) {
-        // 假设key和data已经指向了合适的内存位置
         this->key = key;
         this->data = data;
-        attributes.reference = 0; 
-        attributes.status = 0;    
+        attributes.reference = 0;
+        setStatus(Initial);    // 使用枚举初始化
         attributes.twiceRead = 0;
     }
+
+    // 使用枚举值设置状态
+    void setStatus(NvmNodeStatus status) {
+        attributes.status = static_cast<unsigned int>(status);
+    }
+
+    // 获取状态枚举值
+    NvmNodeStatus getStatus() const {
+        return static_cast<NvmNodeStatus>(attributes.status);
+    }
+
+    // 举例：检查状态
+    bool isStatus(NvmNodeStatus status) const {
+        return getStatus() == status;
+    }
 };
+
 
 // NVM Circular Linked List
 class NvmCircularLinkedList {

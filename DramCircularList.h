@@ -26,8 +26,17 @@ public:
         Be_Migration = 3
     };
 
+    void setStatus(DramNodeStatus status) {
+        attributes.status = static_cast<unsigned int>(status);
+    }
 
-    DramNode(const std::string& key, const std::string& data): prev(nullptr), next(nullptr), size(0) {
+    // 获取状态枚举值
+    DramNodeStatus getStatus() const {
+        return static_cast<DramNodeStatus>(attributes.status);
+    }
+
+
+    DramNode(const std::string& key, const std::string& data, size_t size): prev(nullptr), next(nullptr), size(size){
         size_t keySize = key.size() + 1;
         size_t dataSize = data.size() + 1;
         this->key = new char[keySize];
@@ -46,7 +55,8 @@ public:
     DramCircularLinkedList(): head(nullptr) {}
 
     void insertNode(const std::string& key, const std::string& data) {
-        DramNode* newNode = new DramNode(key, data);
+        size_t size = key.size() + data.size() + sizeof(DramNode);
+        DramNode* newNode = new DramNode(key, data, size);
         if (head == nullptr) {
             head = newNode;
             newNode->next = newNode;

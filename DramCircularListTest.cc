@@ -101,6 +101,21 @@ TEST_F(CircularListDramTest, ClearList) {
     EXPECT_EQ(list->head, nullptr);
 }
 
+//test enum
+TEST_F(CircularListDramTest, NodeStatusTransition) {
+    list->insertNode("key", "data");
+    DramNode* node = list->head;
+
+    node->setStatus(DramNode::Once_read);
+    EXPECT_EQ(node->getStatus(), DramNode::Once_read);
+
+    node->setStatus(DramNode::Twice_read);
+    EXPECT_EQ(node->getStatus(), DramNode::Twice_read);
+
+    node->setStatus(DramNode::Twice_read);
+    EXPECT_EQ(node->getStatus(), DramNode::Twice_read);
+}
+
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
