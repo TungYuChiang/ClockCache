@@ -10,7 +10,6 @@
 using std::string;
 using std::unordered_map;
 
-class ClockCacheTest; // 前置声明测试类
 // 採用clock-RWRF cache algorithm
 class ClockCache
 {
@@ -38,6 +37,11 @@ public:
 
     //This fuction is used for testing
     FRIEND_TEST(ClockCacheTest, EvictDramNode);
+    FRIEND_TEST(ClockCacheTest, TriggerSwapWithDRAM);
+    FRIEND_TEST(ClockCacheTest, TriggerSwapWithMigrationStateAndDramFull);
+    FRIEND_TEST(ClockCacheTest, TriggerSwapWithPreMigrationStateAndDramFull);
+    FRIEND_TEST(ClockCacheTest, TriggerSwapWithPreMigrationStateAndDramNotFull);
+    FRIEND_TEST(ClockCacheTest, SwapNodes);
 };
 
 

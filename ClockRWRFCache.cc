@@ -116,7 +116,7 @@ void ClockCache::triggerSwapWithDRAM(NvmNode* nvmNode) {
     //Migration
     if (!foundSuitableDramNode && nvmNodeStatus == 3) {
         // 如果NVM節點狀態為Migration但未找到合適的DRAM節點，且DRAM空間不足，則逐出DRAM節點
-         size_t requiredSize = sizeof(DramNode) + strlen(nvmNode->key) + 1 + strlen(nvmNode->data) + 1;
+        size_t requiredSize = sizeof(DramNode) + strlen(nvmNode->key) + 1 + strlen(nvmNode->data) + 1;
         while (dram_list.currentSize + requiredSize > dramSize) {
             evictDramNode();
         }
@@ -124,11 +124,18 @@ void ClockCache::triggerSwapWithDRAM(NvmNode* nvmNode) {
         string key(nvmNode->key);
         string data(nvmNode->data);
         dram_list.insertNode(key, data);
+        dram_cacheMap[key] = dram_list.head->prev; 
         nvm_list.deleteNode(nvmNode);
-        nvm_cacheMap.erase(key); 
-    } else if (!foundSuitableDramNode && nvmNodeStatus == 2) {
-        // 如果NVM節點狀態為Pre-Migration但未找到合適的DRAM節點，且不強制交換，則不進行操作
-        // 可以選擇記錄日誌或其他操作
+        nvm_cacheMap.erase(key);
+    }  else if (!foundSuitableDramNode && nvmNodeStatus == 2 && 
+    dram_list.currentSize + sizeof(DramNode) + strlen(nvmNode->key) + 1 + strlen(nvmNode->data) + 1 <= dramSize) {
+        // 如果NVM节点状态为Pre-Migration，且DRAM有足够空间，则直接迁移节点
+        string key(nvmNode->key);
+        string data(nvmNode->data);
+        dram_list.insertNode(key, data);
+        dram_cacheMap[key] = dram_list.head->prev;
+        nvm_list.deleteNode(nvmNode);
+        nvm_cacheMap.erase(key);
     }
 }
 
@@ -187,4 +194,3 @@ void ClockCache::swapNodes(NvmNode* nvmNode, DramNode* dramNode) {
     newNvmNode->attributes.reference = 1;
     newDramNode->attributes.reference = 1;
 }
-
