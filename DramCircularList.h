@@ -4,7 +4,7 @@
 #include <iostream>
 #include <cstdint>
 #include <string>
-#include <cstring> // 用于strcpy
+#include <cstring> 
 
 using std::string;
 class DramNode {
@@ -30,7 +30,6 @@ public:
         attributes.status = static_cast<unsigned int>(status);
     }
 
-    // 获取状态枚举值
     DramNodeStatus getStatus() const {
         return static_cast<DramNodeStatus>(attributes.status);
     }
@@ -69,7 +68,7 @@ public:
             head->prev->next = newNode;
             head->prev = newNode;
         }
-        currentSize += nodeSize; // 更新链表占用的总大小
+        currentSize += nodeSize; 
     }
 
     void deleteNode(DramNode* node) {
@@ -82,7 +81,7 @@ public:
             node->next->prev = node->prev;
             if (head == node) head = node->next;
         }
-        currentSize -= node->size; // 更新链表占用的总大小
+        currentSize -= node->size; 
         delete[] node->key;
         delete[] node->data;
         delete node;

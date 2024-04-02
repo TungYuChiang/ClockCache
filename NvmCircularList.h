@@ -3,7 +3,7 @@
 #include <iostream>
 #include <cstdint>
 #include <string>
-#include <cstring> // 用于strcpy
+#include <cstring>
 #include "pm_manager.h"
 
 #include "pm_manager.h"
@@ -18,7 +18,7 @@ public:
 
     struct Attributes {
         unsigned int reference : 1; 
-        unsigned int status : 2;    // 保持为 unsigned int 以使用2位存储
+        unsigned int status : 2;    
         unsigned int twiceRead : 1; 
     } attributes;
 
@@ -33,55 +33,45 @@ public:
         this->key = key;
         this->data = data;
         attributes.reference = 0;
-        setStatus(Initial);    // 使用枚举初始化
+        setStatus(Initial);   
         attributes.twiceRead = 0;
     }
 
-    // 使用枚举值设置状态
     void setStatus(NvmNodeStatus status) {
         attributes.status = static_cast<unsigned int>(status);
     }
 
-    // 获取状态枚举值
     NvmNodeStatus getStatus() const {
         return static_cast<NvmNodeStatus>(attributes.status);
     }
 
-    // 举例：检查状态
     bool isStatus(NvmNodeStatus status) const {
         return getStatus() == status;
     }
 };
 
-
-// NVM Circular Linked List
 class NvmCircularLinkedList {
 public:
     NvmNode* head;
     PMmanager* pm_;
-    size_t currentSize; // 新增：当前链表占用的总大小
+    size_t currentSize;  //Current size of this LinkedList
 
     NvmCircularLinkedList(PMmanager* pm): head(nullptr), pm_(pm), currentSize(0) {}
 
     NvmNode* createNode(std::string key, std::string data) {
-        size_t keySize = key.size() + 1; // 加1为了null终结符
-        size_t dataSize = data.size() + 1; // 同上
+        size_t keySize = key.size() + 1; 
+        size_t dataSize = data.size() + 1; 
 
-        // 计算总大小，包括Node本身的大小和两个字符串的大小
         size_t totalSize = sizeof(NvmNode) + keySize + dataSize;
 
-        // 分配足够的内存
         void* ptr = pm_->Allocate(totalSize);
 
-        // 计算key和data字符串应该存储的位置
         char* keyPtr = reinterpret_cast<char*>(ptr) + sizeof(NvmNode);
         char* dataPtr = keyPtr + keySize;
 
-        // 复制字符串到分配的内存
         strcpy(keyPtr, key.c_str());
         strcpy(dataPtr, data.c_str());
 
-        // 在分配的内存上构造Node对象
         NvmNode* newNode = new (ptr) NvmNode(keyPtr, dataPtr, totalSize);
 
         return newNode;
@@ -91,15 +81,15 @@ public:
         NvmNode* newNode = createNode(key, data);
         if (head == nullptr) {
             head = newNode;
-            newNode->next = newNode; // 指向自己，形成循环
-            newNode->prev = newNode; // 同上
+            newNode->next = newNode; 
+            newNode->prev = newNode; 
         } else {
             newNode->next = head;
             newNode->prev = head->prev;
             head->prev->next = newNode;
             head->prev = newNode;
         }
-        currentSize += newNode->size; // 更新链表占用的总大小
+        currentSize += newNode->size; 
     }
 
     void deleteNode(NvmNode* node) {
@@ -110,7 +100,7 @@ public:
             node->next->prev = node->prev;
             if (head == node) head = node->next;
         }
-        currentSize -= node->size; // 更新链表占用的总大小
+        currentSize -= node->size; 
         pm_->Free(node);
     }
 
@@ -122,7 +112,7 @@ public:
             pm_->Free(head);
             head = nullptr;
         }
-        currentSize = 0; // 确保链表销毁后，currentSize重置为0
+        currentSize = 0; 
     }
 };
 
