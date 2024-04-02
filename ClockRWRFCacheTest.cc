@@ -21,7 +21,7 @@ protected:
     // 填满DRAM，假设每个节点大约占用100字节空间
     void fillDramToCapacity(ClockCache* cache) {
         size_t nodeSizeApprox = 100; // 假设每个节点大约占用100字节
-        while (cache->dram_list.currentSize + nodeSizeApprox <= cache->dramSize) {
+        while (cache->dram_list.currentSize + nodeSizeApprox <= cache->dramCapacity) {
             cache->dram_list.insertNode("fillKey", "fillData");
         }
     }
@@ -29,7 +29,7 @@ protected:
     // 将DRAM填充到一半容量
     void fillDramHalfway(ClockCache* cache) {
         size_t nodeSizeApprox = 100; // 假设每个节点大约占用100字节
-        size_t halfCapacity = cache->dramSize / 2;
+        size_t halfCapacity = cache->dramCapacity / 2;
         while (cache->dram_list.currentSize + nodeSizeApprox <= halfCapacity) {
             cache->dram_list.insertNode("halfFillKey", "halfFillData");
         }
@@ -49,11 +49,27 @@ size_t countDramNodes(DramCircularLinkedList& list) {
 
     return count;
 }
+size_t countNvmNodes(const NvmCircularLinkedList& nvmList) {
+    size_t count = 0;
+    if (nvmList.head == nullptr) {
+        return count; // 如果链表为空，直接返回计数为0
+    }
+
+    // 从头节点开始遍历链表
+    NvmNode* current = nvmList.head;
+    do {
+        count++; // 为当前节点计数
+        current = current->next; // 移动到下一个节点
+    } while (current != nvmList.head); // 直到回到头节点停止
+
+    return count;
+}
+
 
 TEST_F(ClockCacheTest, EvictDramNode) {
     // 假设每个节点大约占用100字节的空间，为简单起见不考虑实际的sizeof(DramNode)
     size_t approximateNodeSize = 100;
-    size_t dramCapacity = clockCache->dramSize;
+    size_t dramCapacity = clockCache->dramCapacity;
     size_t numNodesToFit = dramCapacity / approximateNodeSize;
 
     // 直接向DRAM填充节点，留下最后一个节点的空间不填，以便测试逐出
@@ -77,6 +93,34 @@ TEST_F(ClockCacheTest, EvictDramNode) {
     // 验证DRAM的currentSize是否减少了大约一个节点的大小
     // 注意：这里的检查可能需要根据实际节点大小进行微调
     EXPECT_LE(clockCache->dram_list.currentSize, dramCapacity - approximateNodeSize);
+}
+TEST_F(ClockCacheTest, EvictNvmNode) {
+    // 假设每个节点大约占用100字节的空间，为简单起见不考虑实际的sizeof(NvmNode)
+    size_t approximateNodeSize = 100;
+    size_t nvmCapacity = clockCache->nvmCapacity;
+    size_t numNodesToFit = nvmCapacity / approximateNodeSize;
+
+    // 直接向NVM填充节点，留下最后一个节点的空间不填，以便测试逐出
+    for (size_t i = 0; i < numNodesToFit - 1; ++i) {
+        std::string key = "key" + std::to_string(i);
+        std::string data = "data" + std::to_string(i);
+        // 直接调用nvm_list的insertNode方法
+        clockCache->nvm_list.insertNode(key, data);
+    }
+
+    // 记录逐出前的节点数量
+    size_t initialNodeCount = countNvmNodes(clockCache->nvm_list); // 假设你有这样一个方法来计数
+
+    // 调用evictNvmNode()逐出一个节点
+    clockCache->evictNvmNode();
+
+    // 记录逐出后的节点数量
+    size_t finalNodeCount = countNvmNodes(clockCache->nvm_list); // 再次计数
+
+    // 验证NVM缓存中的节点数量减少
+    EXPECT_EQ(finalNodeCount, initialNodeCount - 1);
+
+    EXPECT_LE(clockCache->nvm_list.currentSize, nvmCapacity - approximateNodeSize);
 }
 
 TEST_F(ClockCacheTest, TriggerSwapWithDRAM) {
@@ -199,3 +243,100 @@ TEST_F(ClockCacheTest, SwapNodes) {
     EXPECT_EQ(clockCache->dram_cacheMap[nvmKey]->data, nvmData);
     EXPECT_EQ(clockCache->nvm_cacheMap[dramKey]->data, dramData);
 }
+
+TEST_F(ClockCacheTest, UpdateValueInDram) {
+    string key = "testKey";
+    string initialValue = "initialValue";
+    string updatedValue = "updatedValue";
+    
+    // 直接插入初始值到DRAM链表并更新DRAM缓存映射
+    clockCache->dram_list.insertNode(key, initialValue); 
+    DramNode* insertedNode = clockCache->dram_list.head->prev; 
+    clockCache->dram_cacheMap[key] = insertedNode; 
+
+    clockCache->put(key, updatedValue);
+
+    auto it = clockCache->dram_cacheMap.find(key);
+    bool found = (it != clockCache->dram_cacheMap.end());
+    string retrievedValue = found ? it->second->data : "";
+
+    EXPECT_TRUE(found);
+    EXPECT_EQ(retrievedValue, updatedValue);
+}
+
+TEST_F(ClockCacheTest, UpdateAndMigrateFromNvm) {
+    string key = "nvmKey";
+    string initialValue = "initialValue";
+    string updatedValue = "updatedValue";
+    
+    // 直接插入初始值到NVM并更新NVM缓存映射
+    clockCache->nvm_list.insertNode(key, initialValue);
+    NvmNode* insertedNvmNode = clockCache->nvm_list.head; // 假设插入后成为头节点
+    clockCache->nvm_cacheMap[key] = insertedNvmNode;
+    insertedNvmNode->attributes.status = NvmNode::Initial; // 显式设置初始状态
+    
+    // 第一次更新
+    clockCache->put(key, updatedValue);
+    // 验证更新后的值及状态
+    EXPECT_EQ(std::string(clockCache->nvm_cacheMap[key]->data), updatedValue);
+    EXPECT_EQ(clockCache->nvm_cacheMap[key]->attributes.status, NvmNode::Be_Written);
+
+    // 第二次更新，模拟状态更新到Pre_Migration
+    string updatedValue2 = "updatedValue2";
+    clockCache->put(key, updatedValue2);
+    // 由于NVM节点状态应该更新到Pre_Migration，并触发迁移，所以我们需要验证迁移是否成功
+    EXPECT_TRUE(clockCache->dram_cacheMap.find(key) != clockCache->dram_cacheMap.end()); // 确认迁移至DRAM
+    EXPECT_EQ(std::string(clockCache->dram_cacheMap[key]->data), updatedValue2); // 确认DRAM中的数据是最新的
+    EXPECT_TRUE(clockCache->nvm_cacheMap.find(key) == clockCache->nvm_cacheMap.end()); // 确认从NVM中移除
+}
+
+TEST_F(ClockCacheTest, InsertNewNodeIntoDramWhenNotPresentInBoth) {
+    string key = "uniqueKey";
+    string value = "testValue";
+    
+    // 确保key在DRAM和NVM中都不存在
+    clockCache->put(key, value);
+    
+    // 验证key是否被插入到了DRAM中
+    auto itDram = clockCache->dram_cacheMap.find(key);
+    bool isInsertedInDram = (itDram != clockCache->dram_cacheMap.end());
+    EXPECT_TRUE(isInsertedInDram);
+    if (isInsertedInDram) {
+        EXPECT_EQ(std::string(itDram->second->data), value);
+    }
+    
+    // 验证key是否不存在于NVM中
+    auto itNvm = clockCache->nvm_cacheMap.find(key);
+    bool isNotPresentInNvm = (itNvm == clockCache->nvm_cacheMap.end());
+    EXPECT_TRUE(isNotPresentInNvm);
+}
+
+TEST_F(ClockCacheTest, EvictNodeWhenDramIsFull) {
+    // 填满DRAM空间，但留有足够的空间插入一个额外的节点
+    fillDramToCapacity(clockCache);
+
+    // 现在DRAM应接近满状态，尝试插入一个额外的节点
+    string extraKey = "extraKey";
+    string extraValue = "extraValue";
+    clockCache->put(extraKey, extraValue);
+    
+    // 验证新节点是否成功插入到DRAM中
+    auto itExtra = clockCache->dram_cacheMap.find(extraKey);
+    bool isExtraInserted = (itExtra != clockCache->dram_cacheMap.end());
+    EXPECT_TRUE(isExtraInserted);
+    if (isExtraInserted) {
+        // 验证插入的数据是否正确
+        EXPECT_EQ(std::string(itExtra->second->data), extraValue);
+    }
+
+    // 验证DRAM空间是否通过逐出节点以适应新节点插入而得到维护
+    // 这里检查DRAM的当前使用大小是否未超过其容量
+    EXPECT_LE(clockCache->dram_list.currentSize, clockCache->dramCapacity);
+}
+
+
+
+
+
+
+
