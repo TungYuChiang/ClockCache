@@ -104,7 +104,6 @@ bool ClockCache::get(const string& key, string* value) {
                 dramIt->second->setStatus(DramNode::Be_Migration);
                 // Optionally trigger a migration process if the status reaches a certain point
                 break;
-            // Add more cases if your policy has more states
         }
         return true;
     }
@@ -117,24 +116,17 @@ bool ClockCache::get(const string& key, string* value) {
 
         // Update the twiceRead bit. Only update status if twiceRead is 1.
         if (nvmIt->second->attributes.twiceRead == 1) {
-            // Update status based on current status and policy
+            // Update status 
             switch (nvmIt->second->getStatus()) {
-                case NvmNode::Initial:
+                case NvmNode::Pre_Migration:
                     nvmIt->second->setStatus(NvmNode::Be_Written);
                     break;
                 case NvmNode::Be_Written:
-                    nvmIt->second->setStatus(NvmNode::Pre_Migration);
-                    triggerSwapWithDRAM(nvmIt->second);
-                    break;
-                case NvmNode::Pre_Migration:
-                    nvmIt->second->setStatus(NvmNode::Migration);
-                    triggerSwapWithDRAM(nvmIt->second);
+                    nvmIt->second->setStatus(NvmNode::Initial);
                     break;
             }
-            // After updating the status, reset twiceRead to 0
             nvmIt->second->attributes.twiceRead = 0;
         } else {
-            // If twiceRead is 0, set it to 1 for the next access
             nvmIt->second->attributes.twiceRead = 1;
         }
 
