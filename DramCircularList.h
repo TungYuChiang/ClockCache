@@ -20,7 +20,7 @@ public:
     } attributes;
 
     enum DramNodeStatus {
-        Inital = 0,
+        Initial = 0,
         Once_read = 1,
         Twice_read = 2,
         Be_Migration = 3

@@ -85,8 +85,65 @@ void ClockCache::put(const string& key, const string& value) {
 }
 
 bool ClockCache::get(const string& key, string* value) {
+    // Check if the key is in DRAM memory
+    auto dramIt = dram_cacheMap.find(key);
+    if (dramIt != dram_cacheMap.end()) {
+        // Key found in DRAM memory
+        *value = dramIt->second->data;
+         // Update the node's reference bit to 1 to indicate it was recently accessed
+        dramIt->second->attributes.reference = 1;
+        
+        switch(dramIt->second->attributes.status) {
+            case DramNode::Initial:
+                dramIt->second->setStatus(DramNode::Once_read);
+                break;
+            case DramNode::Once_read:
+                dramIt->second->setStatus(DramNode::Twice_read);
+                break;
+            case DramNode::Twice_read:
+                dramIt->second->setStatus(DramNode::Be_Migration);
+                // Optionally trigger a migration process if the status reaches a certain point
+                break;
+            // Add more cases if your policy has more states
+        }
+        return true;
+    }
 
+     // Check if the key is in NVM
+    auto nvmIt = nvm_cacheMap.find(key);
+    if (nvmIt != nvm_cacheMap.end()) {
+        // Key found in NVM
+        *value = nvmIt->second->data;
+
+        // Update the twiceRead bit. Only update status if twiceRead is 1.
+        if (nvmIt->second->attributes.twiceRead == 1) {
+            // Update status based on current status and policy
+            switch (nvmIt->second->getStatus()) {
+                case NvmNode::Initial:
+                    nvmIt->second->setStatus(NvmNode::Be_Written);
+                    break;
+                case NvmNode::Be_Written:
+                    nvmIt->second->setStatus(NvmNode::Pre_Migration);
+                    triggerSwapWithDRAM(nvmIt->second);
+                    break;
+                case NvmNode::Pre_Migration:
+                    nvmIt->second->setStatus(NvmNode::Migration);
+                    triggerSwapWithDRAM(nvmIt->second);
+                    break;
+            }
+            // After updating the status, reset twiceRead to 0
+            nvmIt->second->attributes.twiceRead = 0;
+        } else {
+            // If twiceRead is 0, set it to 1 for the next access
+            nvmIt->second->attributes.twiceRead = 1;
+        }
+
+        return true;
+    }
+    // Key is not in DRAM or NVM
+    return false;
 }
+
 
 void ClockCache::triggerSwapWithDRAM(NvmNode* nvmNode) {
     unsigned int nvmNodeStatus = nvmNode->attributes.status;
