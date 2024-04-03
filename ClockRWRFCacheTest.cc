@@ -334,6 +334,136 @@ TEST_F(ClockCacheTest, EvictNodeWhenDramIsFull) {
     EXPECT_LE(clockCache->dram_list.currentSize, clockCache->dramCapacity);
 }
 
+TEST_F(ClockCacheTest, GetValueFromDram) {
+    string key = "dramKey";
+    string value = "dramValue";
+    
+    // 直接向DRAM插入一個節點
+    clockCache->dram_list.insertNode(key, value);
+    clockCache->dram_cacheMap[key] = clockCache->dram_list.head->prev; // 假設插入後成為尾節點
+    
+    string retrievedValue;
+    bool found = clockCache->get(key, &retrievedValue);
+
+    // 驗證能夠正確地從DRAM中讀取到值
+    EXPECT_TRUE(found);
+    EXPECT_EQ(retrievedValue, value);
+
+    // 驗證引用位和狀態是否被正確更新
+    auto dramNode = clockCache->dram_cacheMap[key];
+    EXPECT_EQ(dramNode->attributes.reference, 1); // 驗證引用位被設置為1
+    EXPECT_EQ(dramNode->getStatus(), DramNode::Once_read); // 驗證狀態更新為Once_read
+}
+
+TEST_F(ClockCacheTest, GetValueFromNvm) {
+    string key = "nvmKey";
+    string value = "nvmValue";
+    
+    // 直接向NVM插入一個節點
+    
+    clockCache->nvm_list.insertNode(key, value); 
+    NvmNode* newNode = clockCache->nvm_list.head->prev;
+    clockCache->nvm_cacheMap[key] = newNode;
+    
+    string retrievedValue;
+    bool found = clockCache->get(key, &retrievedValue);
+
+    // 驗證從NVM中正確讀取值
+    EXPECT_TRUE(found);
+    EXPECT_EQ(retrievedValue, value);
+
+    // 驗證`twiceRead`位和狀態更新
+    auto nvmNode = clockCache->nvm_cacheMap[key];
+    EXPECT_EQ(nvmNode->attributes.twiceRead, 1); // 驗證twiceRead被設置為1
+    // 假設初始狀態為Initial，則這裡不改變狀態，只設置twiceRead
+}
+
+TEST_F(ClockCacheTest, DramNodeStateTransition) {
+    string key = "dramStateKey";
+    string value = "dramStateValue";
+
+    // 直接插入DRAM節點並設置初始狀態
+    clockCache->dram_list.insertNode(key, value);
+    auto dramNode = clockCache->dram_list.head->prev;
+    clockCache->dram_cacheMap[key] = dramNode;
+    dramNode->setStatus(DramNode::Initial);
+
+    // 第一次讀取，應該將狀態從Initial更新為Once_read
+    string retrievedValue1;
+    clockCache->get(key, &retrievedValue1);
+    EXPECT_EQ(dramNode->getStatus(), DramNode::Once_read);
+
+    // 第二次讀取，應該將狀態從Once_read更新為Twice_read
+    string retrievedValue2;
+    clockCache->get(key, &retrievedValue2);
+    EXPECT_EQ(dramNode->getStatus(), DramNode::Twice_read);
+
+    // 第三次讀取，應該將狀態從Twice_read更新為Be_Migration
+    string retrievedValue3;
+    clockCache->get(key, &retrievedValue3);
+    EXPECT_EQ(dramNode->getStatus(), DramNode::Be_Migration);
+}
+
+TEST_F(ClockCacheTest, NvmNodeTwiceReadAndStateTransition) {
+    string key = "nvmStateKey";
+    string value = "nvmStateValue";
+
+    // 直接插入NVM節點並設置初始狀態為Be_Written
+    clockCache->nvm_list.insertNode(key, value); 
+    NvmNode* newNode = clockCache->nvm_list.head->prev;
+    newNode->setStatus(NvmNode::Be_Written);
+    clockCache->nvm_cacheMap[key] = newNode;
+
+    // 第一次讀取，應設置twiceRead為1，但不更新狀態
+    string retrievedValue1;
+    clockCache->get(key, &retrievedValue1);
+    EXPECT_EQ(newNode->attributes.twiceRead, 1);
+    EXPECT_EQ(newNode->getStatus(), NvmNode::Be_Written);
+
+    // 第二次讀取，twiceRead為1，此時應將狀態從Be_Written更新為Initial
+    string retrievedValue2;
+    clockCache->get(key, &retrievedValue2);
+    EXPECT_EQ(newNode->attributes.twiceRead, 0); // 確認twiceRead被重設為0
+    EXPECT_EQ(newNode->getStatus(), NvmNode::Initial); // 確認狀態回到Initial
+}
+
+TEST_F(ClockCacheTest, KeyNotFoundInBothDramAndNvm) {
+    string missingKey = "missingKey";
+    string value;
+
+    // 確認鍵不在DRAM及NVM中
+    bool foundInDram = clockCache->dram_cacheMap.find(missingKey) != clockCache->dram_cacheMap.end();
+    bool foundInNvm = clockCache->nvm_cacheMap.find(missingKey) != clockCache->nvm_cacheMap.end();
+    EXPECT_FALSE(foundInDram);
+    EXPECT_FALSE(foundInNvm);
+
+    // 執行get操作，預期返回false，因為鍵不在兩個緩存中
+    bool result = clockCache->get(missingKey, &value);
+    EXPECT_FALSE(result);
+}
+TEST_F(ClockCacheTest, GetAndPut) {
+    string key = "testKey";
+    string value = "testValue";
+    
+    // 新增鍵值對到DRAM
+    clockCache->put(key, value);
+
+    // 檢索鍵值對
+    string retrievedValue;
+    bool found = clockCache->get(key, &retrievedValue);
+
+    // 驗證是否正確檢索到值，並檢查狀態和引用位的更新
+    EXPECT_TRUE(found);
+    EXPECT_EQ(value, retrievedValue);
+    auto dramNode = clockCache->dram_cacheMap.find(key)->second;
+    EXPECT_EQ(1, dramNode->attributes.reference); // 驗證引用位被設置為1
+    EXPECT_EQ(DramNode::Once_read, dramNode->getStatus()); // 驗證狀態更新為Once_read
+}
+
+
+
+
+
 
 
 

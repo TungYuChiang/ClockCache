@@ -133,6 +133,7 @@ bool ClockCache::get(const string& key, string* value) {
         return true;
     }
     // Key is not in DRAM or NVM
+    // TODO: 提供函式讓外部資料寫入NVM cache(read 使用)
     return false;
 }
 

@@ -48,6 +48,13 @@ public:
     FRIEND_TEST(ClockCacheTest, UpdateAndMigrateFromNvm);
     FRIEND_TEST(ClockCacheTest, InsertNewNodeIntoDramWhenNotPresentInBoth);
     FRIEND_TEST(ClockCacheTest, EvictNodeWhenDramIsFull);
+    FRIEND_TEST(ClockCacheTest, GetValueFromDram);
+    FRIEND_TEST(ClockCacheTest, GetValueFromNvm);
+    FRIEND_TEST(ClockCacheTest, DramNodeStateTransition);
+    FRIEND_TEST(ClockCacheTest, NvmNodeTwiceReadAndStateTransition);
+    FRIEND_TEST(ClockCacheTest, KeyNotFoundInBothDramAndNvm);
+    FRIEND_TEST(ClockCacheTest, GetAndPut);
+    
 };
 
 
